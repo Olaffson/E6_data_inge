@@ -54,7 +54,7 @@ resource "azurerm_mssql_firewall_rule" "allow_local_ip" {
 
 resource "azurerm_container_group" "db_setup" {
   # Attend que la base de données et la règle firewall soient créées
-  depends_on = [azurerm_mssql_database.dwh, azurerm_mssql_firewall_rule.allow_azure_services]
+  depends_on = [azurerm_mssql_database.dwh, azurerm_mssql_server.sql_server, azurerm_mssql_firewall_rule.allow_azure_services]
 
   name                = "db-setup-${lower(replace(var.resource_group_name, "_", "-"))}"
   location            = var.location

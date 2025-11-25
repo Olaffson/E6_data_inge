@@ -10,14 +10,14 @@ resource "azurerm_stream_analytics_job" "asa_job" {
   output_error_policy                      = "Drop"
   streaming_units                          = 1
 
-  transformation_query = <<QUERY
+    transformation_query = <<QUERY
 
     /* 1. Orders -> fact_order */
-  
     SELECT
         o.order_id,
         i.ArrayValue.product_id,
-        o.customer.id AS customer_id,
+        o.customer.id         AS customer_id,
+        i.ArrayValue.seller_id AS seller_id,
         i.ArrayValue.quantity,
         i.ArrayValue.unit_price,
         o.status,
@@ -28,24 +28,23 @@ resource "azurerm_stream_analytics_job" "asa_job" {
         [InputOrders] o
     CROSS APPLY GetArrayElements(o.items) AS i
 
-  
-    /* 2. Orders -> dim_product */
-  
-    SELECT
+
+    /* 2. Orders -> dim_product (avec seller_id) */
+    SELECT DISTINCT
         i.ArrayValue.product_id,
         i.ArrayValue.name,
-        i.ArrayValue.category
+        i.ArrayValue.category,
+        i.ArrayValue.seller_id
     INTO
         [OutputDimProduct]
     FROM
         [InputOrders] o
     CROSS APPLY GetArrayElements(o.items) AS i
 
-    
+
     /* 3. Orders (Customer info) -> dim_customer */
-    
-    SELECT
-        customer.id AS customer_id,
+    SELECT DISTINCT
+        customer.id      AS customer_id,
         customer.name,
         customer.email,
         customer.address,
@@ -56,18 +55,35 @@ resource "azurerm_stream_analytics_job" "asa_job" {
     FROM
         [InputOrders]
 
-    /* 4. Clickstream -> fact_clickstream */
+
+    /* 4. Clickstream -> fact_clickstream (avec seller_id) */
     SELECT
         event_id,
         session_id,
         user_id,
         url,
         event_type,
-        DATEADD(second, timestamp, '1970-01-01') AS event_timestamp
+        DATEADD(second, timestamp, '1970-01-01') AS event_timestamp,
+        seller_id
     INTO
         [OutputFactClickstream]
     FROM
         [InputClickstream]
+
+
+    /* 5. Orders (Seller info) -> dim_seller */
+    SELECT DISTINCT
+        i.ArrayValue.seller_id       AS seller_id,
+        i.ArrayValue.seller_name     AS name,
+        i.ArrayValue.seller_country  AS country,
+        i.ArrayValue.seller_category AS category,
+        i.ArrayValue.seller_status   AS status
+    INTO
+        [OutputDimSeller]
+    FROM
+        [InputOrders] o
+    CROSS APPLY GetArrayElements(o.items) AS i
+
 QUERY
 }
 
@@ -130,6 +146,17 @@ resource "azurerm_stream_analytics_output_mssql" "output_dim_customer" {
   table                     = "dim_customer"
 }
 
+resource "azurerm_stream_analytics_output_mssql" "output_dim_seller" {
+  name                      = "OutputDimSeller"
+  stream_analytics_job_name = azurerm_stream_analytics_job.asa_job.name
+  resource_group_name       = var.resource_group_name
+  server                    = var.sql_server_fqdn
+  user                      = var.sql_admin_login
+  password                  = var.sql_admin_password
+  database                  = var.sql_database_name
+  table                     = "dim_seller"
+}
+
 resource "azurerm_stream_analytics_output_mssql" "output_dim_product" {
   name                      = "OutputDimProduct"
   stream_analytics_job_name = azurerm_stream_analytics_job.asa_job.name
@@ -167,7 +194,8 @@ resource "null_resource" "start_job" {
     azurerm_stream_analytics_output_mssql.output_fact_order,
     azurerm_stream_analytics_output_mssql.output_dim_customer,
     azurerm_stream_analytics_output_mssql.output_dim_product,
-    azurerm_stream_analytics_output_mssql.output_fact_clickstream
+    azurerm_stream_analytics_output_mssql.output_fact_clickstream,
+    azurerm_stream_analytics_output_mssql.output_dim_seller
   ]
 
   provisioner "local-exec" {

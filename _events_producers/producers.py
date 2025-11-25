@@ -12,7 +12,7 @@ fake = Faker()
 # On lit la connexion depuis une variable d'environnement
 CONNECTION_STR = os.getenv("EVENTHUB_CONNECTION_STR")
 ORDERS_INTERVAL      = int(os.getenv("ORDERS_INTERVAL", 60))
-PRODUCTS_INTERVAL    = int(os.getenv("PRODUCTS_INTERVAL", 120))
+PRODUCTS_INTERVAL    = int(os.getenv("PRODUCTS_INTERVAL", 120))  # non utilisé pour l'instant mais gardé
 CLICKSTREAM_INTERVAL = int(os.getenv("CLICKSTREAM_INTERVAL", 2))
 
 if not CONNECTION_STR:
@@ -30,7 +30,22 @@ producers = {
 
 timers = {name: 0 for name in EVENT_HUBS}
 
+# -------------------------------------------------------------------
+# Global pool of sellers (VENDEURS)
+# -------------------------------------------------------------------
+SELLERS_POOL = []
+for _ in range(20):
+    SELLERS_POOL.append({
+        "seller_id": str(uuid.uuid4()),
+        "name": fake.company(),
+        "country": fake.country(),
+        "category": random.choice(["Electronics", "Home", "Clothing", "Books", "Beauty"]),
+        "status": random.choice(["ACTIVE", "INACTIVE", "SUSPENDED"])
+    })
+
+# -------------------------------------------------------------------
 # Global pool of customers
+# -------------------------------------------------------------------
 CUSTOMERS_POOL = []
 for _ in range(100):
     CUSTOMERS_POOL.append({
@@ -42,16 +57,25 @@ for _ in range(100):
         "country": fake.country()
     })
 
-# Global pool of products
+# -------------------------------------------------------------------
+# Global pool of products (chaque produit appartient à un vendeur)
+# -------------------------------------------------------------------
 PRODUCTS_POOL = []
 for _ in range(1000):
+    seller = random.choice(SELLERS_POOL)
     PRODUCTS_POOL.append({
         "product_id": str(uuid.uuid4()),
+        "seller_id": seller["seller_id"],
+        "seller_name": seller["name"],
+        "seller_country": seller["country"],
+        "seller_category": seller["category"],
+        "seller_status": seller["status"],
         "name": fake.catch_phrase(),
         "category": random.choice(["Electronics", "Home", "Clothing", "Books", "Beauty"]),
         "description": fake.sentence(),
-        "price": round(random.uniform(5, 300), 2)
+        "unit_price": round(random.uniform(5, 300), 2)
     })
+
 
 def build_event(name, now):
     if name == "orders":
@@ -59,17 +83,19 @@ def build_event(name, now):
         items = []
         total_amount = 0
         num_items = random.randint(1, 5)
+
         # Select unique products to avoid duplicates in the same order
         selected_products = random.sample(PRODUCTS_POOL, num_items)
-        
+
         for product in selected_products:
             qty = random.randint(1, 3)
             # On copie le produit pour ne pas modifier l'original dans le pool
             item = product.copy()
             item["quantity"] = qty
+            # item contient : product_id, seller_id, name, category, description, unit_price, quantity
             items.append(item)
-            total_amount += product["price"] * qty
-        
+            total_amount += product["unit_price"] * qty
+
         # Pick a random customer from the pool
         customer = random.choice(CUSTOMERS_POOL)
 
@@ -87,22 +113,35 @@ def build_event(name, now):
     if name == "clickstream":
         # Generate event type first
         event_type = random.choice(["view_page", "add_to_cart", "checkout_start"])
-        
-        # Set URL based on event type
+
+        seller_id = None
+        url = "/"
+
+        # Set URL and seller_id based on event type
         if event_type == "add_to_cart":
-            url = "/cart"
+            # on simule un ajout au panier pour un produit précis
+            product = random.choice(PRODUCTS_POOL)
+            seller_id = product["seller_id"]
+            url = f"/cart?seller_id={seller_id}&product_id={product['product_id']}"
+
         elif event_type == "checkout_start":
+            # panier potentiellement multi-vendeurs → pas de seller_id spécifique
             url = "/checkout"
+
         else:  # view_page
             category = random.choice(["Electronics", "Home", "Clothing", "Books", "Beauty"])
             product = random.choice(PRODUCTS_POOL)
+            # différents types de pages, dont une page produit seller/product
             url = random.choice([
                 "/",
                 "/login",
                 f"/category/{category}",
-                f"/product/{product['product_id']}"
+                f"/seller/{product['seller_id']}/product/{product['product_id']}"
             ])
-        
+            # si on tombe sur une page produit, on peut alimenter seller_id
+            if url.startswith("/seller/"):
+                seller_id = product["seller_id"]
+
         return {
             "event_id": str(uuid.uuid4()),
             "session_id": str(uuid.uuid4()),
@@ -111,8 +150,10 @@ def build_event(name, now):
             "event_type": event_type,
             "user_agent": fake.user_agent(),
             "ip_address": fake.ipv4(),
+            "seller_id": seller_id,  # important pour fact_clickstream.seller_id dans le DWH
             "timestamp": now
         }
+
 
 def safe_send(name, event):
     try:
@@ -123,8 +164,9 @@ def safe_send(name, event):
     except Exception as e:
         print("Erreur:", e)
 
+
 if __name__ == "__main__":
-    print("Multi-producer démarré dans le container.")
+    print("Multi-producer démarré dans le container (avec dimension vendeur).")
 
     while True:
         now = time.time()

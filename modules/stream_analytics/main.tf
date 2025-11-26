@@ -107,7 +107,6 @@ resource "azurerm_stream_analytics_stream_input_eventhub" "input_orders" {
   }
 }
 
-
 resource "azurerm_stream_analytics_stream_input_eventhub" "input_clickstream" {
   name                         = "InputClickstream"
   stream_analytics_job_name    = azurerm_stream_analytics_job.asa_job.name

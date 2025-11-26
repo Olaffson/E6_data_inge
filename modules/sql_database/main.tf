@@ -15,7 +15,21 @@ resource "azurerm_mssql_database" "dwh" {
   max_size_gb    = 2
   sku_name       = "S0"
   zone_redundant = false
+
+  # Rétention court terme (PITR)
+  short_term_retention_policy {
+    retention_days = var.sql_short_term_retention_days
+  }
+
+  # Rétention long terme (LTR)
+  long_term_retention_policy {
+    weekly_retention  = var.sql_ltr_weekly_retention   # ex: "P4W"  (4 semaines)
+    monthly_retention = var.sql_ltr_monthly_retention  # ex: "P12M" (12 mois)
+    yearly_retention  = var.sql_ltr_yearly_retention   # ex: "P10Y" (10 ans)
+    week_of_year      = var.sql_ltr_week_of_year       # ex: 1 (1ère semaine de l'année)
+  }
 }
+
 
 resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
   name             = "AllowAzureServices"

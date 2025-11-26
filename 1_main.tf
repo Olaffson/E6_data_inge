@@ -22,6 +22,15 @@ module "sql_database" {
   sql_admin_login     = var.sql_admin_login
   sql_admin_password  = var.sql_admin_password
   schema_file_path    = "${path.root}/dwh_schema.sql"
+
+  # Backups
+  sql_short_term_retention_days = 14
+
+  # LTR
+  sql_ltr_weekly_retention  = "P4W"
+  sql_ltr_monthly_retention = "P12M"
+  sql_ltr_yearly_retention  = "P10Y"
+  sql_ltr_week_of_year      = 1
 }
 
 // Stream
@@ -52,4 +61,3 @@ module "container_producers" {
   dockerhub_username = var.dockerhub_username
   dockerhub_token    = var.dockerhub_token
 }
-

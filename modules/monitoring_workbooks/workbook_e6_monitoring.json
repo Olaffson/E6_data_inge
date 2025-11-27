@@ -1,0 +1,105 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureMetrics\n| where ResourceId has \"microsoft.eventhub/namespaces\"\n| where MetricName == \"IncomingMessages\"\n| summarize TotalMessages = sum(Total) by bin(TimeGenerated, 5m), ResourceId\n| render timechart with (title = \"Event Hubs - Messages entrants (IncomingMessages)\")",
+        "size": 1,
+        "title": "eventhub_incoming",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "halfWidth": true,
+      "name": "eventhub_incoming"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureMetrics\n| where ResourceId has \"microsoft.eventhub/namespaces\"\n| where MetricName in (\"UserErrors\", \"ServerErrors\", \"QuotaExceededErrors\")\n| summarize Errors = sum(Total) by bin(TimeGenerated, 5m), MetricName\n| render columnchart with (title = \"Event Hubs - Erreurs (User / Server / Quota)\")",
+        "size": 1,
+        "title": "eventhub_errors",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "halfWidth": true,
+      "name": "eventhub_errors"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureMetrics\n| where ResourceId has \"microsoft.streamanalytics/streamingjobs\"\n| where MetricName == \"WatermarkDelay\"\n| summarize MaxDelaySeconds = max(Maximum) by bin(TimeGenerated, 5m), ResourceId\n| render timechart with (title = \"ASA - Watermark Delay (s)\")",
+        "size": 1,
+        "title": "asa_watermark_delay",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "halfWidth": true,
+      "name": "asa_watermark_delay"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureDiagnostics\n| where ResourceType == \"STREAMINGJOBS\"\n| where Resource has \"asa-shopnow\"\n| where Level == \"Error\"\n| summarize ErrorCount = count() by bin(TimeGenerated, 5m), Resource\n| render columnchart with (title = \"ASA - Erreurs par intervalle de 5 minutes\")",
+        "size": 1,
+        "title": "asa_errors",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "halfWidth": true,
+      "name": "asa_errors"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureMetrics\n| where ResourceId has \"microsoft.sql/servers\"\n| where MetricName == \"cpu_percent\"\n| summarize AvgCpu = avg(Average) by bin(TimeGenerated, 5m), ResourceId\n| render timechart with (title = \"SQL DWH - CPU moyen (%)\")",
+        "size": 1,
+        "title": "sql_cpu",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "halfWidth": true,
+      "name": "sql_cpu"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AzureMetrics\n| where ResourceId has \"microsoft.sql/servers\"\n| where MetricName == \"data_space_used_percent\"\n| summarize DataUsedPct = max(Maximum) by bin(TimeGenerated, 5m), ResourceId\n| render timechart with (title = \"SQL DWH - Espace utilisé (%)\")",
+        "size": 1,
+        "title": "sql_space_used",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "halfWidth": true,
+      "name": "sql_space_used"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/029b3537-0f24-400b-b624-6058a145efe1/resourcegroups/rg-e6-okotwica/providers/microsoft.operationalinsights/workspaces/law-e6-okotwica"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

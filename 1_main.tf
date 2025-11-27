@@ -81,3 +81,15 @@ module "monitoring_alerts" {
 
   alert_email = "olivierkotwica@gmail.com"
 }
+
+// Monitoring workbooks
+module "monitoring_workbook" {
+  source = "./modules/monitoring_workbooks"
+
+  resource_group_name   = azurerm_resource_group.rg.name
+  location              = azurerm_resource_group.rg.location
+  workspace_id          = module.log_analytics.workspace_id
+
+  workbook_display_name = "E6 - Monitoring Marketplace"
+  workbook_json_path    = "${path.root}/modules/monitoring_workbooks/workbook_e6_monitoring.json"
+}

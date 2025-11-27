@@ -77,7 +77,9 @@ resource "azurerm_stream_analytics_job" "asa_job" {
         i.ArrayValue.seller_name     AS name,
         i.ArrayValue.seller_country  AS country,
         i.ArrayValue.seller_category AS category,
-        i.ArrayValue.seller_status   AS status
+        i.ArrayValue.seller_status   AS status,
+        DATEADD(second, o.timestamp, '1970-01-01') AS created_at,
+        DATEADD(second, o.timestamp, '1970-01-01') AS updated_at
     INTO
         [OutputDimSeller]
     FROM
@@ -104,7 +106,6 @@ resource "azurerm_stream_analytics_stream_input_eventhub" "input_orders" {
     encoding = "UTF8"
   }
 }
-
 
 resource "azurerm_stream_analytics_stream_input_eventhub" "input_clickstream" {
   name                         = "InputClickstream"

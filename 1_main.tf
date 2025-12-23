@@ -76,11 +76,20 @@ module "log_analytics" {
 module "monitoring_alerts" {
   source = "./modules/monitoring_alerts"
 
-  resource_group_name        = azurerm_resource_group.rg.name
-  location                   = azurerm_resource_group.rg.location
-  log_analytics_workspace_id = module.log_analytics.workspace_id
+  depends_on = [module.log_analytics]
 
-  alert_email = "olivierkotwica@gmail.com"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  workspace_id        = module.log_analytics.workspace_id
+
+  alert_email = "ton-email@exemple.com"
+
+  asa_job_name = "asa-shopnow"
+
+  tags = {
+    project = "E6"
+    env     = "dev"
+  }
 }
 
 // Monitoring workbooks

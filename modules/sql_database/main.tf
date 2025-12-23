@@ -93,16 +93,33 @@ resource "azurerm_container_group" "db_setup" {
       "/bin/bash",
       "-c",
       <<-EOT
-        # Écrit le contenu du fichier SQL dans le conteneur
-        echo '${file(var.schema_file_path)}' > /tmp/schema.sql
-        
-        # Exécute le script SQL sur la base de données Azure SQL
+        set -e
+
+        echo "==> [1/2] Injection du schéma DWH"
+        cat > /tmp/schema.sql <<'SQL'
+    ${file(var.schema_file_path)}
+    SQL
+
         /opt/mssql-tools/bin/sqlcmd \
           -S ${azurerm_mssql_server.sql_server.fully_qualified_domain_name} \
           -U ${var.sql_admin_login} \
           -P '${var.sql_admin_password}' \
           -d ${azurerm_mssql_database.dwh.name} \
           -i /tmp/schema.sql
+
+        echo "==> [2/2] Injection sécurité (RLS / rôles / permissions)"
+        cat > /tmp/security.sql <<'SQL'
+    ${file(var.security_file_path)}
+    SQL
+
+        /opt/mssql-tools/bin/sqlcmd \
+          -S ${azurerm_mssql_server.sql_server.fully_qualified_domain_name} \
+          -U ${var.sql_admin_login} \
+          -P '${var.sql_admin_password}' \
+          -d ${azurerm_mssql_database.dwh.name} \
+          -i /tmp/security.sql
+
+        echo "==> OK - Schéma + Sécurité appliqués"
       EOT
     ]
   }

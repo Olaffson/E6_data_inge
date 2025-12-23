@@ -8,7 +8,7 @@ DROP TABLE IF EXISTS dim_seller;
 DROP TABLE IF EXISTS dim_customer;
 
 ----------------------------------------
--- 1. dim_customer (inchangée)
+-- 1. dim_customer
 ----------------------------------------
 CREATE TABLE dim_customer (
     customer_id VARCHAR(50) PRIMARY KEY,

@@ -92,7 +92,9 @@ Au chargement des faits :
 ---
 
 ## Mise en œuvre dans le projet (résumé)
-- Créer / mettre à jour le schéma SQL vers SCD2 (voir fichier `dwh_schema_scd2.sql`).
+- Mettre à jour le schéma SQL (voir fichier `dwh_schema.sql`) pour intégrer les colonnes SCD2 (`valid_from`, `valid_to`, `is_current`) et les clés substitutives.
+- Conserver les flux Stream Analytics en insert-only et déléguer l’historisation SCD2 à des triggers `INSTEAD OF INSERT` sur les dimensions.
+- Supprimer les contraintes de clés étrangères sur les dimensions historisées (plusieurs versions par clé métier).
 - Mettre à jour les pipelines d’ingestion/ETL (Stream Analytics ou batch) pour :
   - alimenter les dimensions via logique SCD
   - charger les faits avec les `*_sk` (ou au minimum stocker `seller_id` pour RLS)

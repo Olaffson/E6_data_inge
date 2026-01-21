@@ -103,3 +103,17 @@ module "monitoring_workbook" {
   workbook_display_name = "E6 - Monitoring Marketplace"
   workbook_json_path    = "${path.root}/modules/monitoring_workbooks/workbook_e6_monitoring.json"
 }
+
+// Scheduled backups (full + partial) via Azure Automation
+module "automation_backup" {
+  source = "./modules/automation_backup"
+
+  depends_on = [module.sql_database]
+
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  sql_server_fqdn      = module.sql_database.server_fqdn
+  sql_database_name    = module.sql_database.database_name
+  sql_admin_login      = var.sql_admin_login
+  sql_admin_password   = var.sql_admin_password
+}

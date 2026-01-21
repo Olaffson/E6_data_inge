@@ -409,9 +409,9 @@ La rétention native peut servir de sauvegarde minimale mais doit être complét
 ## 5.2 Types de sauvegarde
 
 ### 🔵 1. Sauvegarde complète du DWH
-- **Fréquence recommandée : quotidienne (nuit).**
-- Méthode : Azure SQL Automatic Backups.
-- Conservation : 7 à 35 jours selon le tier.
+- **Fréquence : hebdomadaire.**
+- Méthode : runbook Azure Automation qui crée une copie de base `dwh-shopnow_full_YYYYMMDD`.
+- Conservation : purge automatique des copies au-delà de la rétention configurée.
 
 ### 🟢 2. Sauvegarde partielle (tables critiques)
 Les tables les plus sensibles :
@@ -419,16 +419,13 @@ Les tables les plus sensibles :
 - `dim_seller` (nouveau modèle Marketplace)
 - `dim_product` (relation produit–vendeur)
 
-Exemple SQL simple :
+Exemple SQL simple (utilisé par le runbook) :
 ```sql
 SELECT * INTO backup.fact_order_20250201
 FROM fact_order;
 ```
 
-Ou export automatisé via `bcp` :
-```bash
-bcp "SELECT * FROM dim_seller" queryout dim_seller_20250201.csv -S server -d db -U user -P pass -c
-```
+La sauvegarde partielle est planifiée quotidiennement via Azure Automation et nettoie les tables `backup.*` au-delà de la rétention.
 
 ### 🟣 3. Sauvegarde des métadonnées
 Comprend :
@@ -451,9 +448,8 @@ Bonne pratique :
 ## 5.3 Procédures de restauration
 
 ### 🔵 Restauration complète
-1. Aller dans Azure SQL → Backups.
-2. Choisir le point dans le temps.
-3. Restaurer la base (overwrite ou nouvelle base).
+1. Identifier la copie `dwh-shopnow_full_YYYYMMDD` la plus récente.
+2. Restaurer la base (overwrite ou nouvelle base) depuis cette copie.
 4. Vérifier l’intégrité (COUNT(*), clés étrangères).
 5. Redémarrer le job Stream Analytics et le conteneur `aeh-producers` si nécessaire.
 

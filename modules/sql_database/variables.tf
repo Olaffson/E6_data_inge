@@ -24,6 +24,11 @@ variable "security_file_path" {
   description = "Chemin vers le script SQL de sécurité/RLS"
 }
 
+variable "rgpd_file_path" {
+  type        = string
+  description = "Chemin vers le script SQL RGPD (registre, audit, procedures)"
+}
+
 variable "sql_short_term_retention_days" {
   description = "Nombre de jours de rétention pour le Point-In-Time Restore (7 à 35)."
   type        = number

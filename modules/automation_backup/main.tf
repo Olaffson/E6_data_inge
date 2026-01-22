@@ -51,6 +51,13 @@ resource "azurerm_automation_variable_string" "partial_backup_retention_days" {
   value                   = tostring(var.partial_backup_retention_days)
 }
 
+resource "azurerm_automation_variable_string" "purge_clickstream_retention_days" {
+  name                    = "PurgeClickstreamRetentionDays"
+  resource_group_name     = var.resource_group_name
+  automation_account_name = azurerm_automation_account.backup.name
+  value                   = tostring(var.purge_clickstream_retention_days)
+}
+
 resource "azurerm_automation_runbook" "full_backup" {
   name                    = "rb-full-backup"
   location                = var.location
@@ -142,6 +149,30 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
   depends_on = [azurerm_automation_module.sqlserver]
 }
 
+resource "azurerm_automation_runbook" "purge_clickstream" {
+  name                    = "rb-purge-clickstream"
+  location                = var.location
+  resource_group_name     = var.resource_group_name
+  automation_account_name = azurerm_automation_account.backup.name
+  log_progress            = true
+  log_verbose             = true
+  runbook_type            = "PowerShell"
+
+  content = <<-PS1
+    Import-Module SqlServer
+
+    $server = Get-AutomationVariable -Name "SqlServerFqdn"
+    $db = Get-AutomationVariable -Name "SqlDatabaseName"
+    $retentionDays = [int](Get-AutomationVariable -Name "PurgeClickstreamRetentionDays")
+    $cred = Get-AutomationPSCredential -Name "SqlAdmin"
+
+    $query = "EXEC dbo.sp_purge_obsolete_data @clickstream_retention_days = $retentionDays;"
+    Invoke-Sqlcmd -ServerInstance $server -Database $db -Credential $cred -Query $query
+  PS1
+
+  depends_on = [azurerm_automation_module.sqlserver]
+}
+
 resource "azurerm_automation_schedule" "full_backup" {
   name                    = "sched-full-backup"
   resource_group_name     = var.resource_group_name
@@ -170,6 +201,20 @@ resource "azurerm_automation_schedule" "partial_backup" {
   }
 }
 
+resource "azurerm_automation_schedule" "purge_clickstream" {
+  name                    = "sched-purge-clickstream"
+  resource_group_name     = var.resource_group_name
+  automation_account_name = azurerm_automation_account.backup.name
+  frequency               = "Day"
+  interval                = 1
+  timezone                = var.schedule_timezone
+  start_time              = timeadd(timestamp(), "1h")
+
+  lifecycle {
+    ignore_changes = [start_time]
+  }
+}
+
 resource "azurerm_automation_job_schedule" "full_backup" {
   automation_account_name = azurerm_automation_account.backup.name
   resource_group_name     = var.resource_group_name
@@ -182,4 +227,11 @@ resource "azurerm_automation_job_schedule" "partial_backup" {
   resource_group_name     = var.resource_group_name
   runbook_name            = azurerm_automation_runbook.partial_backup.name
   schedule_name           = azurerm_automation_schedule.partial_backup.name
+}
+
+resource "azurerm_automation_job_schedule" "purge_clickstream" {
+  automation_account_name = azurerm_automation_account.backup.name
+  resource_group_name     = var.resource_group_name
+  runbook_name            = azurerm_automation_runbook.purge_clickstream.name
+  schedule_name           = azurerm_automation_schedule.purge_clickstream.name
 }

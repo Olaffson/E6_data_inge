@@ -697,7 +697,7 @@ La plateforme intègre des mécanismes de conformité au **Règlement Général 
 - Données transactionnelles : conservation longue pour obligations légales.
 - Données agrégées : conservation étendue.
 
-Une **purge automatique planifiée** est mise en place pour supprimer les données obsolètes.
+Une **purge automatique planifiée** est mise en place via Azure Automation (`sp_purge_obsolete_data`).
 
 ### 7.3.3 Droit à l’oubli et anonymisation
 
@@ -710,8 +710,8 @@ Une procédure dédiée permet de traiter les demandes RGPD de manière sécuris
 ### 7.3.4 Traçabilité et gouvernance
 
 - Journalisation des accès et actions sensibles.
-- Suivi des opérations RGPD.
-- Mise à jour du registre des traitements.
+- Suivi des opérations RGPD dans `rgpd.audit_log` (anonymisation, purge).
+- Registre des traitements matérialisé dans `rgpd.processing_register`.
 
 ---
 

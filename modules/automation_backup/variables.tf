@@ -37,3 +37,8 @@ variable "schedule_timezone" {
   type    = string
   default = "UTC"
 }
+
+variable "purge_clickstream_retention_days" {
+  type    = number
+  default = 90
+}

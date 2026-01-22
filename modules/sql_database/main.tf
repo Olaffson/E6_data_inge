@@ -107,7 +107,7 @@ resource "azurerm_container_group" "db_setup" {
           -d ${azurerm_mssql_database.dwh.name} \
           -i /tmp/schema.sql
 
-        echo "==> [2/2] Injection sécurité (RLS / rôles / permissions)"
+        echo "==> [2/3] Injection sécurité (RLS / rôles / permissions)"
         cat > /tmp/security.sql <<'SQL'
     ${file(var.security_file_path)}
     SQL
@@ -119,9 +119,20 @@ resource "azurerm_container_group" "db_setup" {
           -d ${azurerm_mssql_database.dwh.name} \
           -i /tmp/security.sql
 
-        echo "==> OK - Schéma + Sécurité appliqués"
+        echo "==> [3/3] Injection RGPD (registre / audit / procedures)"
+        cat > /tmp/rgpd.sql <<'SQL'
+    ${file(var.rgpd_file_path)}
+    SQL
+
+        /opt/mssql-tools/bin/sqlcmd \
+          -S ${azurerm_mssql_server.sql_server.fully_qualified_domain_name} \
+          -U ${var.sql_admin_login} \
+          -P '${var.sql_admin_password}' \
+          -d ${azurerm_mssql_database.dwh.name} \
+          -i /tmp/rgpd.sql
+
+        echo "==> OK - Schéma + Sécurité + RGPD appliqués"
       EOT
     ]
   }
 }
-
